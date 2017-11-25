@@ -35,8 +35,8 @@ var validJSONPFunc = regexp.MustCompile(`(?i)^[a-z_][a-z0-9_.]*$`)
 // Config: specifies the server configuration values.
 
 type Config struct {
-	ContentPath string // Path to the content files for the blog.
-	ThemePath   string // Path to the theme files for the blog.
+	ContentPath  string // Path to the content files for the blog.
+	TemplatePath string // Path to the template files for the blog.
 
 	BaseURL  string // Absolute base URL (for perm-links - no trailing slashes).
 	BasePath string // Base URL path relative to server root - no trailing slashes.
@@ -53,13 +53,13 @@ type Doc struct {
 	*present.Doc
 	Permalink string        // Canonical URL for this document.
 	Path      string        // Path relative to server root (including base).
-	HTML      template.HTML // Rendered articles.
+	HTML      template.HTML // Rendered content.
 
-	Related      []*Doc // Related articles.
-	Newer, Older *Doc   // Supporting newer and older articles.
+	Related      []*Doc // Related content.
+	Newer, Older *Doc   // Supporting newer and older content.
 }
 
-// Server: implements a http.handler that serves articles.
+// Server: implements a http.handler that serves content.
 
 type Server struct {
 	cfg      Config          // Configuration.
@@ -86,7 +86,7 @@ type jsonItem struct {
 	Author  string
 }
 
-// RootData: encapsulates data destined for the root theme.
+// RootData: encapsulates data destined for the root template.
 
 type rootData struct {
 	Doc      *Doc
@@ -97,10 +97,10 @@ type rootData struct {
 // NewServer constructs a new server using the specified configuration.
 
 func NewServer(cfg Config) (*Server, error) {
-	root := filepath.Join(cfg.ThemePath, "root.tmpl")
+	root := filepath.Join(cfg.TemplatePath, "root.tmpl")
 	parse := func(name string) (*template.Template, error) {
 		t := template.New("").Funcs(funcMap)
-		return t.ParseFiles(root, filepath.Join(cfg.ThemePath, name))
+		return t.ParseFiles(root, filepath.Join(cfg.TemplatePath, name))
 	}
 
 	s := &Server{cfg: cfg}
@@ -124,7 +124,7 @@ func NewServer(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	p := present.Template().Funcs(funcMap)
-	s.template.doc, err = p.ParseFiles(filepath.Join(cfg.ThemePath, "doc.tmpl"))
+	s.template.doc, err = p.ParseFiles(filepath.Join(cfg.TemplatePath, "doc.tmpl"))
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // LoadDocs: reads all content for the provided file system root and renders all
-// the articles it finds.
+// the content it finds.
 
 func (s *Server) loadDocs(root string) error {
 	// Read content into docs (article) field.
@@ -286,7 +286,7 @@ func (s *Server) loadDocs(root string) error {
 			break
 		}
 
-		// Related: all docs (articles) that share tags with doc.
+		// Related: all docs (content) that share tags with doc.
 		related := make(map[*Doc]bool)
 
 		for _, t := range doc.Tags {
