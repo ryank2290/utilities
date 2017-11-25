@@ -86,7 +86,7 @@ type jsonItem struct {
 	Author  string
 }
 
-// RootData: encapsulates data destined for the root template.
+// RootData: encapsulates data destined for the root theme.
 
 type rootData struct {
 	Doc      *Doc
@@ -103,39 +103,29 @@ func NewServer(cfg Config) (*Server, error) {
 		return t.ParseFiles(root, filepath.Join(cfg.ThemePath, name))
 	}
 
-	s := &Server{
-		cfg: cfg,
-	}
+	s := &Server{cfg: cfg}
 
+	// Parse templates.
 	var err error
-
 	s.template.home, err = parse("home.tmpl")
 	if err != nil {
 		return nil, err
 	}
-
 	s.template.index, err = parse("index.tmpl")
 	if err != nil {
 		return nil, err
 	}
-
 	s.template.article, err = parse("article.tmpl")
 	if err != nil {
 		return nil, err
 	}
-
-	s.template.page, err = parse("page.tmpl")
-	if err != nil {
-		return nil, err
-	}
-
 	p := present.Template().Funcs(funcMap)
 	s.template.doc, err = p.ParseFiles(filepath.Join(cfg.ThemePath, "doc.tmpl"))
 	if err != nil {
 		return nil, err
 	}
 
-	// Load all the content available.
+	// Load content.
 	err = s.loadDocs(filepath.Clean(cfg.ContentPath))
 	if err != nil {
 		return nil, err
@@ -151,7 +141,7 @@ func NewServer(cfg Config) (*Server, error) {
 		return nil, err
 	}
 
-	// Setup and configure the content file server.
+	// Set up content file server.
 	s.content = http.StripPrefix(s.cfg.BasePath, http.FileServer(http.Dir(cfg.ContentPath)))
 
 	return s, nil
@@ -161,12 +151,9 @@ func NewServer(cfg Config) (*Server, error) {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
-		d = rootData{
-			BasePath: s.cfg.BasePath,
-		}
+		d = rootData{BasePath: s.cfg.BasePath}
 		t *template.Template
 	)
-
 	switch p := strings.TrimPrefix(r.URL.Path, s.cfg.BasePath); p {
 	case "/":
 		d.Data = s.docs
@@ -192,17 +179,14 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		doc, ok := s.docPaths[p]
-
 		if !ok {
-			// Not a doc (article); try to just serve static content.
+			// Not a doc; try to just serve static content.
 			s.content.ServeHTTP(w, r)
 			return
 		}
-
 		d.Doc = doc
 		t = s.template.article
 	}
-
 	err := t.ExecuteTemplate(w, "root", d)
 	if err != nil {
 		log.Println(err)
