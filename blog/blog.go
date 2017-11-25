@@ -119,6 +119,10 @@ func NewServer(cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.template.page, err = parse("page.tmpl")
+	if err != nil {
+		return nil, err
+	}
 	p := present.Template().Funcs(funcMap)
 	s.template.doc, err = p.ParseFiles(filepath.Join(cfg.ThemePath, "doc.tmpl"))
 	if err != nil {
