@@ -35,8 +35,8 @@ var validJSONPFunc = regexp.MustCompile(`(?i)^[a-z_][a-z0-9_.]*$`)
 // Config: specifies the server configuration values.
 
 type Config struct {
-	ContentPath  string // Path to the content files for the blog.
-	TemplatePath string // Path to the template files for the blog.
+	ArticlePath string // Path to the article files for the blog.
+	ThemePath   string // Path to the theme files for the blog.
 
 	BaseURL  string // Absolute base URL (for perm-links - no trailing slashes).
 	BasePath string // Base URL path relative to server root - no trailing slashes.
@@ -47,19 +47,19 @@ type Config struct {
 	FeedTitle    string // The title of the ATOM XML feed
 }
 
-// Doc: specifies an article full of content.
+// Doc: specifies an article full of articles.
 
 type Doc struct {
 	*present.Doc
 	Permalink string        // Canonical URL for this document.
 	Path      string        // Path relative to server root (including base).
-	HTML      template.HTML // Rendered content.
+	HTML      template.HTML // Rendered articles.
 
-	Related      []*Doc // Related content.
-	Newer, Older *Doc   // Supporting newer and older content.
+	Related      []*Doc // Related articles.
+	Newer, Older *Doc   // Supporting newer and older articles.
 }
 
-// Server: implements a http.handler that serves content.
+// Server: implements a http.handler that serves articles.
 
 type Server struct {
 	cfg      Config          // Configuration.
@@ -86,7 +86,7 @@ type jsonItem struct {
 	Author  string
 }
 
-// RootData: encapsulates data destined for the root template.
+// RootData: encapsulates data destined for the root theme.
 
 type rootData struct {
 	Doc      *Doc
@@ -97,10 +97,10 @@ type rootData struct {
 // NewServer constructs a new server using the specified configuration.
 
 func NewServer(cfg Config) (*Server, error) {
-	root := filepath.Join(cfg.TemplatePath, "root.tmpl")
+	root := filepath.Join(cfg.ThemePath, "root.tmpl")
 	parse := func(name string) (*template.Template, error) {
 		t := template.New("").Funcs(funcMap)
-		return t.ParseFiles(root, filepath.Join(cfg.TemplatePath, name))
+		return t.ParseFiles(root, filepath.Join(cfg.ThemePath, name))
 	}
 
 	s := &Server{cfg: cfg}
@@ -124,13 +124,13 @@ func NewServer(cfg Config) (*Server, error) {
 		return nil, err
 	}
 	p := present.Template().Funcs(funcMap)
-	s.template.doc, err = p.ParseFiles(filepath.Join(cfg.TemplatePath, "doc.tmpl"))
+	s.template.doc, err = p.ParseFiles(filepath.Join(cfg.ThemePath, "doc.tmpl"))
 	if err != nil {
 		return nil, err
 	}
 
-	// Load content.
-	err = s.loadDocs(filepath.Clean(cfg.ContentPath))
+	// Load articles.
+	err = s.loadDocs(filepath.Clean(cfg.ArticlePath))
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +145,8 @@ func NewServer(cfg Config) (*Server, error) {
 		return nil, err
 	}
 
-	// Set up content file server.
-	s.content = http.StripPrefix(s.cfg.BasePath, http.FileServer(http.Dir(cfg.ContentPath)))
+	// Set up articles file server.
+	s.content = http.StripPrefix(s.cfg.BasePath, http.FileServer(http.Dir(cfg.ArticlePath)))
 
 	return s, nil
 }
@@ -184,7 +184,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		doc, ok := s.docPaths[p]
 		if !ok {
-			// Not a doc; try to just serve static content.
+			// Not a doc; try to just serve static articles.
 			s.content.ServeHTTP(w, r)
 			return
 		}
@@ -197,11 +197,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LoadDocs: reads all content for the provided file system root and renders all
-// the content it finds.
+// LoadDocs: reads all articles for the provided file system root and renders all
+// the articles it finds.
 
 func (s *Server) loadDocs(root string) error {
-	// Read content into docs (article) field.
+	// Read articles into docs (article) field.
 	const ext = ".article"
 
 	fn := func(p string, info os.FileInfo, err error) error {
@@ -286,7 +286,7 @@ func (s *Server) loadDocs(root string) error {
 			break
 		}
 
-		// Related: all docs (content) that share tags with doc.
+		// Related: all docs (articles) that share tags with doc.
 		related := make(map[*Doc]bool)
 
 		for _, t := range doc.Tags {

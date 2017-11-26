@@ -23,7 +23,7 @@ type Entry struct {
 	Updated   TimeStr `xml:"updated"`
 	Author    *Person `xml:"author"`
 	Summary   *Text   `xml:"summary"`
-	Content   *Text   `xml:"content"`
+	Content   *Text   `xml:"articles"`
 }
 
 type Link struct {
