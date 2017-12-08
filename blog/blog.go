@@ -27,7 +27,7 @@ import (
 	"encoding/xml"
 
 	"github.com/ryank90/utilities/blog/atom"
-	"golang.org/x/tools/present"
+	"github.com/ryank90/utilities/present"
 )
 
 var validJSONPFunc = regexp.MustCompile(`(?i)^[a-z_][a-z0-9_.]*$`)
@@ -53,6 +53,9 @@ type Doc struct {
 	*present.Doc
 	Permalink string        // Canonical URL for this document.
 	Path      string        // Path relative to server root (including base).
+	Intro     string        // Introduction line for the document.
+	Image     string        // Image for the document.
+	Category  string        // Category for the document.
 	HTML      template.HTML // Rendered articles.
 
 	Related      []*Doc // Related articles.
@@ -131,6 +134,7 @@ func NewServer(cfg Config) (*Server, error) {
 
 	// Load articles.
 	err = s.loadDocs(filepath.Clean(cfg.ArticlePath))
+
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +228,7 @@ func (s *Server) loadDocs(root string) error {
 		}
 
 		html := new(bytes.Buffer)
+
 		err = d.Render(html, s.template.doc)
 		if err != nil {
 			return err
@@ -232,8 +237,13 @@ func (s *Server) loadDocs(root string) error {
 		p = p[len(root) : len(p)-len(ext)] // Trim root and extension.
 		p = filepath.ToSlash(p)
 
+		log.Printf("%v", d)
+
 		s.docs = append(s.docs, &Doc{
 			Doc:       d,
+			Intro:     d.Intro,
+			Image:     d.Image,
+			Category:  d.Category,
 			Path:      s.cfg.BasePath + p,
 			Permalink: s.cfg.BaseURL + p,
 			HTML:      template.HTML(html.String()),
@@ -400,6 +410,8 @@ func (s *Server) renderJSONFeed() error {
 var funcMap = template.FuncMap{
 	"sectioned": sectioned,
 	"authors":   authors,
+	"ToUpper":   strings.ToUpper,
+	"ToLower":   strings.ToLower,
 }
 
 // Sectioned: returns true if the Doc (Article) contains more than one section.
